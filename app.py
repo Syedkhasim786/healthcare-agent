@@ -1,6 +1,8 @@
 import streamlit as st
 import faiss
 import numpy as np
+import pandas as pd
+import requests
 from sentence_transformers import SentenceTransformer
 
 # -------------------------------
@@ -29,22 +31,52 @@ index = faiss.IndexFlatL2(dimension)
 index.add(np.array(embeddings))
 
 # -------------------------------
-# Hospital Data
+# 🔥 REAL Hospital API (OpenStreetMap)
 # -------------------------------
-hospitals = [
-    {"name": "Government General Hospital", "location": "Eluru", "type": "Government"},
-    {"name": "Apollo Hospital", "location": "Vijayawada", "type": "Private"},
-    {"name": "Aster Hospital", "location": "Vijayawada", "type": "Private"},
-    {"name": "District Hospital", "location": "West Godavari", "type": "Government"},
-    {"name": "KIMS Hospital", "location": "Hyderabad", "type": "Private"},
-]
+def get_hospitals(city):
+    try:
+        url = "https://overpass-api.de/api/interpreter"
+
+        query = f"""
+        [out:json];
+        area["name"="{city}"]->.searchArea;
+        (
+          node["amenity"="hospital"](area.searchArea);
+          way["amenity"="hospital"](area.searchArea);
+          relation["amenity"="hospital"](area.searchArea);
+        );
+        out center;
+        """
+
+        response = requests.get(url, params={'data': query}, timeout=10)
+        data = response.json()
+
+        hospitals = []
+
+        for element in data.get('elements', []):
+            name = element.get('tags', {}).get('name', 'Unknown Hospital')
+
+            lat = element.get('lat') or element.get('center', {}).get('lat')
+            lon = element.get('lon') or element.get('center', {}).get('lon')
+
+            if lat and lon:
+                hospitals.append({
+                    "name": name,
+                    "lat": lat,
+                    "lon": lon
+                })
+
+        return hospitals
+
+    except:
+        return []
 
 # -------------------------------
 # Detect intent
 # -------------------------------
 def detect_intent(query):
     query = query.lower()
-    if "advice" in query or "treatment" in query:
+    if any(word in query for word in ["advice", "treatment", "cure", "remedy"]):
         return "advice"
     elif "symptom" in query:
         return "symptoms"
@@ -70,7 +102,6 @@ def extract_disease(query):
 # -------------------------------
 def filter_response(text, intent):
     sentences = text.split(".")
-    
     result = ""
 
     for s in sentences:
@@ -125,26 +156,32 @@ if query:
 
     st.success(final_answer)
 
-    # 👇 Suggest hospitals
-    st.info("💡 Need medical help? Find nearby hospitals below 👇")
+    st.info("💡 Need medical help? Find real nearby hospitals below 👇")
 
 # -------------------------------
-# Hospital Finder Section
+# 🏥 REAL Hospital Finder
 # -------------------------------
-st.subheader("🏥 Find Nearby Hospitals")
+st.subheader("🏥 Find Real Nearby Hospitals")
 
 city = st.text_input("Enter your city:")
 
-if st.button("Show Hospitals"):
-    found = False
+if st.button("Show Real Hospitals"):
+    if city:
+        with st.spinner("Fetching hospitals..."):
+            hospitals = get_hospitals(city)
 
-    for h in hospitals:
-        if city and city.lower() in h["location"].lower():
-            st.success(f"🏥 {h['name']}")
-            st.write(f"📍 Location: {h['location']}")
-            st.write(f"🏷️ Type: {h['type']}")
-            st.write("---")
-            found = True
+        if hospitals:
+            st.success(f"Found {len(hospitals)} hospitals")
 
-    if not found:
-        st.warning("No hospitals found in this area.")
+            # Show top 5 names
+            for h in hospitals[:5]:
+                st.write(f"🏥 {h['name']}")
+
+            # Show map
+            df = pd.DataFrame(hospitals)
+            st.map(df[['lat', 'lon']])
+
+        else:
+            st.warning("No hospitals found or API error.")
+    else:
+        st.warning("Please enter a city.")

@@ -1,0 +1,9 @@
+Fever: Drink fluids and rest. It may be caused by viral infection.
+
+Cold: Common symptoms include sneezing and runny nose.
+
+Headache: Can be due to stress, dehydration, or lack of sleep.
+
+Diabetes: A condition that affects blood sugar levels.
+
+Blood Pressure: High BP can lead to heart problems.

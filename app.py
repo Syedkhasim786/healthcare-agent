@@ -30,17 +30,20 @@ index = faiss.IndexFlatL2(dimension)
 index.add(np.array(embeddings))
 
 # -------------------------------
-# Detect intent
+# ✅ FIXED: Detect intent
 # -------------------------------
 def detect_intent(query):
     query = query.lower()
+
     if any(w in query for w in ["advice", "treatment", "cure"]):
         return "advice"
     elif "symptom" in query:
         return "symptoms"
     elif "what is" in query:
         return "definition"
-    return "full"
+    else:
+        # 🔥 DEFAULT → symptoms
+        return "symptoms"
 
 # -------------------------------
 # Extract disease
@@ -55,23 +58,25 @@ def extract_disease(query):
     return None
 
 # -------------------------------
-# Filter response
+# ✅ FIXED: Filter response (clean)
 # -------------------------------
 def filter_response(text, intent):
     sentences = text.split(".")
     result = ""
 
     for s in sentences:
-        s = s.lower()
+        s_lower = s.lower()
 
-        if intent == "advice" and any(w in s for w in ["rest", "drink", "take"]):
-            result += s + ". "
-        elif intent == "symptoms" and any(w in s for w in ["chills", "headache"]):
-            result += s + ". "
-        elif intent == "definition" and "is a" in s:
-            result += s + ". "
+        if intent == "advice" and any(w in s_lower for w in ["rest", "drink", "take"]):
+            result += s.strip() + ". "
 
-    return result if result else text
+        elif intent == "symptoms" and any(w in s_lower for w in ["symptom", "chills", "headache", "sweating", "muscle"]):
+            result += s.strip() + ". "
+
+        elif intent == "definition" and ("is a" in s_lower or "is an" in s_lower):
+            result += s.strip() + ". "
+
+    return result.strip() if result else "No relevant information found."
 
 # -------------------------------
 # UI
@@ -103,7 +108,7 @@ if query:
     st.info("👇 Find nearby hospitals below")
 
 # -------------------------------
-# ✅ 20 Cities Hospital Data
+# 20 Cities Hospital Data
 # -------------------------------
 hospitals_data = {
     "vijayawada": [{"name": "Andhra Hospitals", "lat": 16.5062, "lon": 80.6480}],
@@ -129,7 +134,7 @@ hospitals_data = {
 }
 
 # -------------------------------
-# Hospital Finder (Dropdown)
+# Hospital Finder
 # -------------------------------
 st.subheader("🏥 Nearby Hospitals")
 

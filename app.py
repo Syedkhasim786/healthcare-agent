@@ -1,36 +1,31 @@
 import streamlit as st
-from langchain_community.document_loaders import TextLoader
-from langchain_text_splitters import CharacterTextSplitter
-from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_openai import OpenAI
-from langchain.chains.retrieval_qa.base import RetrievalQA
+import faiss
+import numpy as np
+from sentence_transformers import SentenceTransformer
 
-# Load documents
-loader = TextLoader("data/medical.txt")
-documents = loader.load()
+# Load model
+model = SentenceTransformer("all-MiniLM-L6-v2")
 
-# Split text
-text_splitter = CharacterTextSplitter(chunk_size=200, chunk_overlap=20)
-docs = text_splitter.split_documents(documents)
+# Load medical data
+with open("data/medical.txt", "r") as f:
+    texts = f.readlines()
 
-# Embeddings
-embeddings = HuggingFaceEmbeddings()
+# Create embeddings
+embeddings = model.encode(texts)
 
-# Vector DB
-db = FAISS.from_documents(docs, embeddings)
+# Create FAISS index
+dimension = embeddings.shape[1]
+index = faiss.IndexFlatL2(dimension)
+index.add(np.array(embeddings))
 
-# QA Chain
-qa = RetrievalQA.from_chain_type(
-    llm=OpenAI(temperature=0),
-    retriever=db.as_retriever()
-)
-
-# UI
+# Streamlit UI
 st.title("🏥 AI Healthcare Assistant")
 
-query = st.text_input("Enter your symptoms or question:")
+query = st.text_input("Enter your symptoms:")
 
 if query:
-    response = qa.run(query)
-    st.write("🤖", response)
+    query_embedding = model.encode([query])
+    D, I = index.search(np.array(query_embedding), k=1)
+    result = texts[I[0][0]]
+
+    st.write("🤖", result)

@@ -1,9 +1,29 @@
-Fever: Drink fluids and rest. It may be caused by viral infection.
+Fever:
+Fever is a temporary increase in body temperature, often due to infection.
+Symptoms: sweating, chills, headache, muscle aches.
+Advice: Drink plenty of fluids, take rest, and use paracetamol if needed.
 
-Cold: Common symptoms include sneezing and runny nose.
+Cold:
+Common cold is a viral infection of the nose and throat.
+Symptoms: runny nose, sneezing, sore throat.
+Advice: Stay hydrated, take rest, and use steam inhalation.
 
-Headache: Can be due to stress, dehydration, or lack of sleep.
+Headache:
+Headaches can occur due to stress, dehydration, or lack of sleep.
+Symptoms: pain in head, pressure, sensitivity to light.
+Advice: Drink water, rest in a quiet place, and avoid stress.
 
-Diabetes: A condition that affects blood sugar levels.
+Diabetes:
+Diabetes is a chronic disease that affects blood sugar levels.
+Symptoms: increased thirst, frequent urination, fatigue.
+Advice: Maintain healthy diet, exercise regularly, monitor sugar levels.
 
-Blood Pressure: High BP can lead to heart problems.
+High Blood Pressure:
+Also known as hypertension, it increases risk of heart disease.
+Symptoms: often no symptoms, sometimes headaches or dizziness.
+Advice: Reduce salt intake, exercise regularly, monitor BP.
+
+Stomach Pain:
+Can be caused by indigestion, gas, or infection.
+Symptoms: abdominal pain, bloating, nausea.
+Advice: Eat light food, avoid spicy items, stay hydrated.

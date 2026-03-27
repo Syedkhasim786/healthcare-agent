@@ -31,24 +31,49 @@ index = faiss.IndexFlatL2(dimension)
 index.add(np.array(embeddings))
 
 # -------------------------------
-# 🔥 REAL Hospital API (OpenStreetMap)
+# 🔥 Convert city → coordinates
+# -------------------------------
+def get_coordinates(city):
+    try:
+        url = "https://nominatim.openstreetmap.org/search"
+        params = {
+            "q": city,
+            "format": "json"
+        }
+
+        response = requests.get(url, params=params, timeout=10)
+        data = response.json()
+
+        if data:
+            return float(data[0]["lat"]), float(data[0]["lon"])
+        return None, None
+
+    except:
+        return None, None
+
+# -------------------------------
+# 🔥 Get hospitals using coordinates
 # -------------------------------
 def get_hospitals(city):
     try:
+        lat, lon = get_coordinates(city)
+
+        if not lat or not lon:
+            return []
+
         url = "https://overpass-api.de/api/interpreter"
 
         query = f"""
-        [out:json];
-        area["name"="{city}"]->.searchArea;
+        [out:json][timeout:25];
         (
-          node["amenity"="hospital"](area.searchArea);
-          way["amenity"="hospital"](area.searchArea);
-          relation["amenity"="hospital"](area.searchArea);
+          node["amenity"="hospital"](around:10000,{lat},{lon});
+          way["amenity"="hospital"](around:10000,{lat},{lon});
+          relation["amenity"="hospital"](around:10000,{lat},{lon});
         );
         out center;
         """
 
-        response = requests.get(url, params={'data': query}, timeout=10)
+        response = requests.get(url, params={'data': query}, timeout=15)
         data = response.json()
 
         hospitals = []
@@ -68,7 +93,8 @@ def get_hospitals(city):
 
         return hospitals
 
-    except:
+    except Exception as e:
+        st.error(f"API Error: {e}")
         return []
 
 # -------------------------------
@@ -173,15 +199,13 @@ if st.button("Show Real Hospitals"):
         if hospitals:
             st.success(f"Found {len(hospitals)} hospitals")
 
-            # Show top 5 names
             for h in hospitals[:5]:
                 st.write(f"🏥 {h['name']}")
 
-            # Show map
             df = pd.DataFrame(hospitals)
             st.map(df[['lat', 'lon']])
 
         else:
-            st.warning("No hospitals found or API error.")
+            st.warning("No hospitals found. Try a bigger city like Vijayawada.")
     else:
         st.warning("Please enter a city.")

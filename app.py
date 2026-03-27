@@ -1,10 +1,10 @@
 import streamlit as st
-from langchain_text_splitters import CharacterTextSplitter
 from langchain_community.document_loaders import TextLoader
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_text_splitters import CharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain.chains import RetrievalQA
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_openai import OpenAI
+from langchain.chains.retrieval_qa.base import RetrievalQA
 
 # Load documents
 loader = TextLoader("data/medical.txt")
@@ -23,7 +23,6 @@ db = FAISS.from_documents(docs, embeddings)
 # QA Chain
 qa = RetrievalQA.from_chain_type(
     llm=OpenAI(temperature=0),
-    chain_type="stuff",
     retriever=db.as_retriever()
 )
 

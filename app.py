@@ -29,6 +29,17 @@ index = faiss.IndexFlatL2(dimension)
 index.add(np.array(embeddings))
 
 # -------------------------------
+# Hospital Data
+# -------------------------------
+hospitals = [
+    {"name": "Government General Hospital", "location": "Eluru", "type": "Government"},
+    {"name": "Apollo Hospital", "location": "Vijayawada", "type": "Private"},
+    {"name": "Aster Hospital", "location": "Vijayawada", "type": "Private"},
+    {"name": "District Hospital", "location": "West Godavari", "type": "Government"},
+    {"name": "KIMS Hospital", "location": "Hyderabad", "type": "Private"},
+]
+
+# -------------------------------
 # Detect intent
 # -------------------------------
 def detect_intent(query):
@@ -89,12 +100,10 @@ st.write("Ask about symptoms, diseases, or health advice")
 query = st.text_input("Enter your symptoms:")
 
 # -------------------------------
-# Search + Perfect Filtering
+# Chatbot Response
 # -------------------------------
 if query:
     query_embedding = model.encode([query])
-
-    # take more results for filtering
     D, I = index.search(np.array(query_embedding), k=5)
 
     intent = detect_intent(query)
@@ -104,17 +113,38 @@ if query:
 
     best_text = None
 
-    # ✅ pick correct disease only
     for i in I[0]:
         if disease and disease in texts[i].lower():
             best_text = texts[i]
             break
 
-    # fallback
     if not best_text:
         best_text = texts[I[0][0]]
 
-    # ✅ filter only required info
     final_answer = filter_response(best_text, intent)
 
-    st.write("👉", final_answer)
+    st.success(final_answer)
+
+    # 👇 Suggest hospitals
+    st.info("💡 Need medical help? Find nearby hospitals below 👇")
+
+# -------------------------------
+# Hospital Finder Section
+# -------------------------------
+st.subheader("🏥 Find Nearby Hospitals")
+
+city = st.text_input("Enter your city:")
+
+if st.button("Show Hospitals"):
+    found = False
+
+    for h in hospitals:
+        if city and city.lower() in h["location"].lower():
+            st.success(f"🏥 {h['name']}")
+            st.write(f"📍 Location: {h['location']}")
+            st.write(f"🏷️ Type: {h['type']}")
+            st.write("---")
+            found = True
+
+    if not found:
+        st.warning("No hospitals found in this area.")

@@ -2,7 +2,6 @@ import streamlit as st
 import faiss
 import numpy as np
 import pandas as pd
-import requests
 from sentence_transformers import SentenceTransformer
 
 # -------------------------------
@@ -31,69 +30,6 @@ index = faiss.IndexFlatL2(dimension)
 index.add(np.array(embeddings))
 
 # -------------------------------
-# ✅ FIXED: Convert city → coordinates
-# -------------------------------
-def get_coordinates(city):
-    url = "https://nominatim.openstreetmap.org/search"
-    headers = {"User-Agent": "my-app"}
-
-    params = {
-        "q": city,
-        "format": "json"
-    }
-
-    try:
-        res = requests.get(url, params=params, headers=headers, timeout=10)
-        data = res.json()
-
-        if data:
-            return float(data[0]["lat"]), float(data[0]["lon"])
-    except:
-        pass
-
-    return None, None
-
-
-# -------------------------------
-# ✅ FIXED: Get hospitals (stable)
-# -------------------------------
-def get_hospitals(city):
-    lat, lon = get_coordinates(city)
-
-    if not lat:
-        return []
-
-    url = "https://overpass-api.de/api/interpreter"
-    headers = {"User-Agent": "my-app"}
-
-    query = f"""
-    [out:json][timeout:25];
-    node["amenity"="hospital"](around:15000,{lat},{lon});
-    out;
-    """
-
-    try:
-        res = requests.post(url, data=query, headers=headers, timeout=20)
-        data = res.json()
-
-        hospitals = []
-
-        for el in data.get("elements", []):
-            name = el.get("tags", {}).get("name", "Unknown Hospital")
-
-            hospitals.append({
-                "name": name,
-                "lat": el.get("lat"),
-                "lon": el.get("lon")
-            })
-
-        return hospitals
-
-    except:
-        return []
-
-
-# -------------------------------
 # Detect intent
 # -------------------------------
 def detect_intent(query):
@@ -106,7 +42,6 @@ def detect_intent(query):
         return "definition"
     return "full"
 
-
 # -------------------------------
 # Extract disease
 # -------------------------------
@@ -118,7 +53,6 @@ def extract_disease(query):
         if d in query:
             return d
     return None
-
 
 # -------------------------------
 # Filter response
@@ -138,7 +72,6 @@ def filter_response(text, intent):
             result += s + ". "
 
     return result if result else text
-
 
 # -------------------------------
 # UI
@@ -171,27 +104,46 @@ if query:
     st.info("👇 Find nearby hospitals below")
 
 # -------------------------------
+# ✅ WORKING Hospital Data (NO API)
+# -------------------------------
+hospitals_data = {
+    "vijayawada": [
+        {"name": "Andhra Hospitals", "lat": 16.5062, "lon": 80.6480},
+        {"name": "Ramesh Hospitals", "lat": 16.5150, "lon": 80.6300},
+        {"name": "Government General Hospital", "lat": 16.5185, "lon": 80.6305},
+        {"name": "Aayush Hospitals", "lat": 16.5100, "lon": 80.6450},
+    ],
+    "hyderabad": [
+        {"name": "Apollo Hospitals", "lat": 17.3850, "lon": 78.4867},
+        {"name": "KIMS Hospital", "lat": 17.4350, "lon": 78.4483},
+        {"name": "Yashoda Hospital", "lat": 17.4290, "lon": 78.5016},
+    ]
+}
+
+# -------------------------------
 # Hospital Finder
 # -------------------------------
 st.subheader("🏥 Nearby Hospitals")
 
-city = st.text_input("Enter city (try Vijayawada / Hyderabad):")
+city = st.text_input("Enter city (Vijayawada / Hyderabad):")
 
 if st.button("Search Hospitals"):
     if city:
-        with st.spinner("Loading..."):
-            hospitals = get_hospitals(city)
+        city_key = city.lower()
 
-        if hospitals:
+        if city_key in hospitals_data:
+            hospitals = hospitals_data[city_key]
+
             st.success(f"{len(hospitals)} hospitals found")
 
-            for h in hospitals[:5]:
-                st.write("🏥", h["name"])
+            for h in hospitals:
+                st.write(f"🏥 {h['name']}")
 
             df = pd.DataFrame(hospitals)
             st.map(df)
 
         else:
-            st.error("No hospitals found (try Vijayawada)")
+            st.warning("City not available. Try Vijayawada or Hyderabad.")
+
     else:
         st.warning("Enter city")

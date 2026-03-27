@@ -100,50 +100,48 @@ if query:
     answer = filter_response(best, intent)
 
     st.success(answer)
-
     st.info("👇 Find nearby hospitals below")
 
 # -------------------------------
-# ✅ WORKING Hospital Data (NO API)
+# ✅ 20 Cities Hospital Data
 # -------------------------------
 hospitals_data = {
-    "vijayawada": [
-        {"name": "Andhra Hospitals", "lat": 16.5062, "lon": 80.6480},
-        {"name": "Ramesh Hospitals", "lat": 16.5150, "lon": 80.6300},
-        {"name": "Government General Hospital", "lat": 16.5185, "lon": 80.6305},
-        {"name": "Aayush Hospitals", "lat": 16.5100, "lon": 80.6450},
-    ],
-    "hyderabad": [
-        {"name": "Apollo Hospitals", "lat": 17.3850, "lon": 78.4867},
-        {"name": "KIMS Hospital", "lat": 17.4350, "lon": 78.4483},
-        {"name": "Yashoda Hospital", "lat": 17.4290, "lon": 78.5016},
-    ]
+    "vijayawada": [{"name": "Andhra Hospitals", "lat": 16.5062, "lon": 80.6480}],
+    "hyderabad": [{"name": "Apollo Hospitals", "lat": 17.3850, "lon": 78.4867}],
+    "visakhapatnam": [{"name": "Care Hospitals", "lat": 17.6868, "lon": 83.2185}],
+    "chennai": [{"name": "Apollo Chennai", "lat": 13.0827, "lon": 80.2707}],
+    "bangalore": [{"name": "Manipal Hospital", "lat": 12.9716, "lon": 77.5946}],
+    "mumbai": [{"name": "Lilavati Hospital", "lat": 19.0596, "lon": 72.8295}],
+    "delhi": [{"name": "AIIMS Delhi", "lat": 28.5672, "lon": 77.2100}],
+    "kolkata": [{"name": "Apollo Kolkata", "lat": 22.5726, "lon": 88.3639}],
+    "pune": [{"name": "Ruby Hall Clinic", "lat": 18.5204, "lon": 73.8567}],
+    "ahmedabad": [{"name": "Sterling Hospital", "lat": 23.0225, "lon": 72.5714}],
+    "jaipur": [{"name": "Fortis Jaipur", "lat": 26.9124, "lon": 75.7873}],
+    "lucknow": [{"name": "SGPGI", "lat": 26.8467, "lon": 80.9462}],
+    "kanpur": [{"name": "Regency Hospital", "lat": 26.4499, "lon": 80.3319}],
+    "nagpur": [{"name": "Care Hospital Nagpur", "lat": 21.1458, "lon": 79.0882}],
+    "indore": [{"name": "Bombay Hospital", "lat": 22.7196, "lon": 75.8577}],
+    "bhopal": [{"name": "AIIMS Bhopal", "lat": 23.2599, "lon": 77.4126}],
+    "patna": [{"name": "AIIMS Patna", "lat": 25.5941, "lon": 85.1376}],
+    "chandigarh": [{"name": "PGIMER", "lat": 30.7333, "lon": 76.7794}],
+    "coimbatore": [{"name": "Ganga Hospital", "lat": 11.0168, "lon": 76.9558}],
+    "kochi": [{"name": "Aster Medcity", "lat": 9.9312, "lon": 76.2673}],
 }
 
 # -------------------------------
-# Hospital Finder
+# Hospital Finder (Dropdown)
 # -------------------------------
 st.subheader("🏥 Nearby Hospitals")
 
-city = st.text_input("Enter city (Vijayawada / Hyderabad):")
+city = st.selectbox("Select your city:", list(hospitals_data.keys()))
 
 if st.button("Search Hospitals"):
-    if city:
-        city_key = city.lower()
+    hospitals = hospitals_data[city]
 
-        if city_key in hospitals_data:
-            hospitals = hospitals_data[city_key]
+    st.success(f"{len(hospitals)} hospital(s) found in {city.title()}")
 
-            st.success(f"{len(hospitals)} hospitals found")
+    for h in hospitals:
+        st.write(f"🏥 {h['name']}")
 
-            for h in hospitals:
-                st.write(f"🏥 {h['name']}")
-
-            df = pd.DataFrame(hospitals)
-            st.map(df)
-
-        else:
-            st.warning("City not available. Try Vijayawada or Hyderabad.")
-
-    else:
-        st.warning("Enter city")
+    df = pd.DataFrame(hospitals)
+    st.map(df)

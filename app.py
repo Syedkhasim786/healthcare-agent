@@ -31,181 +31,167 @@ index = faiss.IndexFlatL2(dimension)
 index.add(np.array(embeddings))
 
 # -------------------------------
-# 🔥 Convert city → coordinates
+# ✅ FIXED: Convert city → coordinates
 # -------------------------------
 def get_coordinates(city):
-    try:
-        url = "https://nominatim.openstreetmap.org/search"
-        params = {
-            "q": city,
-            "format": "json"
-        }
+    url = "https://nominatim.openstreetmap.org/search"
+    headers = {"User-Agent": "my-app"}
 
-        response = requests.get(url, params=params, timeout=10)
-        data = response.json()
+    params = {
+        "q": city,
+        "format": "json"
+    }
+
+    try:
+        res = requests.get(url, params=params, headers=headers, timeout=10)
+        data = res.json()
 
         if data:
             return float(data[0]["lat"]), float(data[0]["lon"])
-        return None, None
-
     except:
-        return None, None
+        pass
+
+    return None, None
+
 
 # -------------------------------
-# 🔥 Get hospitals using coordinates
+# ✅ FIXED: Get hospitals (stable)
 # -------------------------------
 def get_hospitals(city):
+    lat, lon = get_coordinates(city)
+
+    if not lat:
+        return []
+
+    url = "https://overpass-api.de/api/interpreter"
+    headers = {"User-Agent": "my-app"}
+
+    query = f"""
+    [out:json][timeout:25];
+    node["amenity"="hospital"](around:15000,{lat},{lon});
+    out;
+    """
+
     try:
-        lat, lon = get_coordinates(city)
-
-        if not lat or not lon:
-            return []
-
-        url = "https://overpass-api.de/api/interpreter"
-
-        query = f"""
-        [out:json][timeout:25];
-        (
-          node["amenity"="hospital"](around:10000,{lat},{lon});
-          way["amenity"="hospital"](around:10000,{lat},{lon});
-          relation["amenity"="hospital"](around:10000,{lat},{lon});
-        );
-        out center;
-        """
-
-        response = requests.get(url, params={'data': query}, timeout=15)
-        data = response.json()
+        res = requests.post(url, data=query, headers=headers, timeout=20)
+        data = res.json()
 
         hospitals = []
 
-        for element in data.get('elements', []):
-            name = element.get('tags', {}).get('name', 'Unknown Hospital')
+        for el in data.get("elements", []):
+            name = el.get("tags", {}).get("name", "Unknown Hospital")
 
-            lat = element.get('lat') or element.get('center', {}).get('lat')
-            lon = element.get('lon') or element.get('center', {}).get('lon')
-
-            if lat and lon:
-                hospitals.append({
-                    "name": name,
-                    "lat": lat,
-                    "lon": lon
-                })
+            hospitals.append({
+                "name": name,
+                "lat": el.get("lat"),
+                "lon": el.get("lon")
+            })
 
         return hospitals
 
-    except Exception as e:
-        st.error(f"API Error: {e}")
+    except:
         return []
+
 
 # -------------------------------
 # Detect intent
 # -------------------------------
 def detect_intent(query):
     query = query.lower()
-    if any(word in query for word in ["advice", "treatment", "cure", "remedy"]):
+    if any(w in query for w in ["advice", "treatment", "cure"]):
         return "advice"
     elif "symptom" in query:
         return "symptoms"
-    elif "what is" in query or "define" in query:
+    elif "what is" in query:
         return "definition"
-    else:
-        return "full"
+    return "full"
+
 
 # -------------------------------
 # Extract disease
 # -------------------------------
 def extract_disease(query):
+    diseases = ["fever", "cold", "cough", "flu"]
     query = query.lower()
-    diseases = ["fever", "cold", "cough", "flu", "diabetes"]
 
     for d in diseases:
         if d in query:
             return d
     return None
 
+
 # -------------------------------
-# Extract only required part
+# Filter response
 # -------------------------------
 def filter_response(text, intent):
     sentences = text.split(".")
     result = ""
 
     for s in sentences:
-        s_lower = s.lower()
+        s = s.lower()
 
-        if intent == "definition" and ("is a" in s_lower or "is an" in s_lower):
-            result += s.strip() + ". "
+        if intent == "advice" and any(w in s for w in ["rest", "drink", "take"]):
+            result += s + ". "
+        elif intent == "symptoms" and any(w in s for w in ["chills", "headache"]):
+            result += s + ". "
+        elif intent == "definition" and "is a" in s:
+            result += s + ". "
 
-        elif intent == "symptoms" and (
-            "symptom" in s_lower or "chills" in s_lower or "headache" in s_lower
-        ):
-            result += s.strip() + ". "
+    return result if result else text
 
-        elif intent == "advice" and (
-            "advice" in s_lower or "drink" in s_lower or "rest" in s_lower or "take" in s_lower
-        ):
-            result += s.strip() + ". "
-
-    return result.strip() if result else "No relevant information found."
 
 # -------------------------------
-# Streamlit UI
+# UI
 # -------------------------------
 st.title("🏥 AI Healthcare Assistant")
-st.write("Ask about symptoms, diseases, or health advice")
 
 query = st.text_input("Enter your symptoms:")
 
 # -------------------------------
-# Chatbot Response
+# Chatbot
 # -------------------------------
 if query:
-    query_embedding = model.encode([query])
-    D, I = index.search(np.array(query_embedding), k=5)
+    q_embed = model.encode([query])
+    D, I = index.search(np.array(q_embed), k=5)
 
     intent = detect_intent(query)
     disease = extract_disease(query)
 
-    st.subheader("🤖 AI Response:")
-
-    best_text = None
+    best = texts[I[0][0]]
 
     for i in I[0]:
         if disease and disease in texts[i].lower():
-            best_text = texts[i]
+            best = texts[i]
             break
 
-    if not best_text:
-        best_text = texts[I[0][0]]
+    answer = filter_response(best, intent)
 
-    final_answer = filter_response(best_text, intent)
+    st.success(answer)
 
-    st.success(final_answer)
-
-    st.info("💡 Need medical help? Find real nearby hospitals below 👇")
+    st.info("👇 Find nearby hospitals below")
 
 # -------------------------------
-# 🏥 REAL Hospital Finder
+# Hospital Finder
 # -------------------------------
-st.subheader("🏥 Find Real Nearby Hospitals")
+st.subheader("🏥 Nearby Hospitals")
 
-city = st.text_input("Enter your city:")
+city = st.text_input("Enter city (try Vijayawada / Hyderabad):")
 
-if st.button("Show Real Hospitals"):
+if st.button("Search Hospitals"):
     if city:
-        with st.spinner("Fetching hospitals..."):
+        with st.spinner("Loading..."):
             hospitals = get_hospitals(city)
 
         if hospitals:
-            st.success(f"Found {len(hospitals)} hospitals")
+            st.success(f"{len(hospitals)} hospitals found")
 
             for h in hospitals[:5]:
-                st.write(f"🏥 {h['name']}")
+                st.write("🏥", h["name"])
 
             df = pd.DataFrame(hospitals)
-            st.map(df[['lat', 'lon']])
+            st.map(df)
 
         else:
-            st.warning("No hospitals found. Try a bigger city like Vijayawada.")
+            st.error("No hospitals found (try Vijayawada)")
     else:
-        st.warning("Please enter a city.")
+        st.warning("Enter city")

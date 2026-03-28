@@ -3,16 +3,7 @@ import faiss
 import numpy as np
 import pandas as pd
 from sentence_transformers import SentenceTransformer
-from openai import OpenAI
 import os
-
-# -------------------------------
-# 🔑 API KEY (use Streamlit secrets ideally)
-# -------------------------------
-import os
-from openai import OpenAI
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # -------------------------------
 # 🧠 MEMORY INIT
@@ -130,35 +121,21 @@ def agent_response(query, best_text):
 st.title("🏥 Agentic AI Healthcare Assistant")
 
 # -------------------------------
-# INPUT (Typing + Voice)
+# INPUT (Typing + Voice SAFE)
 # -------------------------------
 typed_query = st.text_input("Enter your symptoms:")
 audio_file = st.audio_input("🎤 Speak your symptoms")
 
 query = ""
 
-# Priority: typed > voice
+# Always allow typing
 if typed_query:
     query = typed_query
 
+# Voice (safe mode)
 elif audio_file:
     st.audio(audio_file)
-
-    # Save audio temporarily
-    with open("temp_audio.wav", "wb") as f:
-        f.write(audio_file.read())
-
-    # Convert speech → text
-    with open("temp_audio.wav", "rb") as audio:
-        transcript = client.audio.transcriptions.create(
-            model="gpt-4o-mini-transcribe",
-            file=audio
-        )
-
-    query = transcript.text
-    st.success(f"🎤 You said: {query}")
-
-    os.remove("temp_audio.wav")
+    st.warning("🎤 Voice recorded (speech-to-text disabled to avoid API errors). Please type your query.")
 
 # -------------------------------
 # Chatbot

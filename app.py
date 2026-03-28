@@ -58,12 +58,11 @@ def extract_disease(query):
     return None
 
 # -------------------------------
-# ✅ FIXED: Extract real sections
+# Extract real sections
 # -------------------------------
 def filter_response(text, intent):
     text_lower = text.lower()
 
-    # -------- Definition --------
     if intent == "definition":
         if ":" in text:
             definition = text.split(":")[1]
@@ -71,17 +70,13 @@ def filter_response(text, intent):
                 definition = definition.split("Symptoms:")[0]
             return definition.strip()
 
-    # -------- Symptoms --------
     elif intent == "symptoms":
         if "symptoms:" in text_lower:
             part = text.split("Symptoms:")[1]
-
             if "Advice:" in part:
                 part = part.split("Advice:")[0]
-
             return part.strip()
 
-    # -------- Advice --------
     elif intent == "advice":
         if "advice:" in text_lower:
             return text.split("Advice:")[1].strip()
@@ -89,9 +84,45 @@ def filter_response(text, intent):
     return "No relevant information found."
 
 # -------------------------------
+# ✅ AGENTIC AI FUNCTION
+# -------------------------------
+def agent_response(query, best_text):
+    query_lower = query.lower()
+
+    symptoms = filter_response(best_text, "symptoms")
+    advice = filter_response(best_text, "advice")
+    definition = filter_response(best_text, "definition")
+
+    response = ""
+
+    intent = detect_intent(query)
+
+    # -------------------------------
+    # Decision Making
+    # -------------------------------
+    if intent == "definition":
+        response += f"📘 About Disease:\n{definition}"
+
+    elif intent == "advice":
+        response += f"💊 Advice:\n{advice}"
+
+    else:
+        # Default intelligent flow
+        response += f"🩺 Symptoms:\n{symptoms}\n\n"
+        response += f"💊 Advice:\n{advice}"
+
+    # -------------------------------
+    # Severity Detection
+    # -------------------------------
+    if any(word in query_lower for word in ["severe", "high", "emergency"]):
+        response += "\n\n🚨 Condition seems serious. Please visit a hospital immediately."
+
+    return response
+
+# -------------------------------
 # UI
 # -------------------------------
-st.title("🏥 AI Healthcare Assistant")
+st.title("🏥 Agentic AI Healthcare Assistant")
 
 query = st.text_input("Enter your symptoms:")
 
@@ -102,7 +133,6 @@ if query:
     q_embed = model.encode([query])
     D, I = index.search(np.array(q_embed), k=5)
 
-    intent = detect_intent(query)
     disease = extract_disease(query)
 
     best = texts[I[0][0]]
@@ -112,7 +142,8 @@ if query:
             best = texts[i]
             break
 
-    answer = filter_response(best, intent)
+    # ✅ Agent response
+    answer = agent_response(query, best)
 
     st.success(answer)
     st.info("👇 Find nearby hospitals below")

@@ -5,6 +5,12 @@ import pandas as pd
 from sentence_transformers import SentenceTransformer
 
 # -------------------------------
+# 🧠 MEMORY INIT
+# -------------------------------
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
+# -------------------------------
 # Load model
 # -------------------------------
 model = SentenceTransformer("all-MiniLM-L6-v2")
@@ -84,7 +90,7 @@ def filter_response(text, intent):
     return "No relevant information found."
 
 # -------------------------------
-# ✅ FIXED AGENT FUNCTION
+# Agent Response
 # -------------------------------
 def agent_response(query, best_text):
     query_lower = query.lower()
@@ -95,20 +101,15 @@ def agent_response(query, best_text):
 
     intent = detect_intent(query)
 
-    # ✅ STRICT CONTROL
     if intent == "definition":
         response = f"📘 About Disease:\n{definition}"
-
     elif intent == "advice":
         response = f"💊 Advice:\n{advice}"
-
     elif intent == "symptoms":
         response = f"🩺 Symptoms:\n{symptoms}"
-
     else:
         response = f"🩺 Symptoms:\n{symptoms}\n\n💊 Advice:\n{advice}"
 
-    # 🚨 Severity detection
     if any(word in query_lower for word in ["severe", "high", "emergency"]):
         response += "\n\n🚨 Condition seems serious. Please visit a hospital immediately."
 
@@ -122,7 +123,7 @@ st.title("🏥 Agentic AI Healthcare Assistant")
 query = st.text_input("Enter your symptoms:")
 
 # -------------------------------
-# Chatbot
+# Chatbot + Memory
 # -------------------------------
 if query:
     q_embed = model.encode([query])
@@ -139,8 +140,26 @@ if query:
 
     answer = agent_response(query, best)
 
-    st.success(answer)
-    st.info("👇 Find nearby hospitals below")
+    # ✅ SAVE TO MEMORY
+    st.session_state.chat_history.append(("user", query))
+    st.session_state.chat_history.append(("bot", answer))
+
+# -------------------------------
+# 💬 DISPLAY CHAT HISTORY
+# -------------------------------
+st.subheader("💬 Chat History")
+
+for role, msg in st.session_state.chat_history:
+    if role == "user":
+        st.markdown(f"🧑 **You:** {msg}")
+    else:
+        st.markdown(f"🤖 **AI:** {msg}")
+
+# -------------------------------
+# Clear Chat Button
+# -------------------------------
+if st.button("🗑️ Clear Chat"):
+    st.session_state.chat_history = []
 
 # -------------------------------
 # Hospital Data

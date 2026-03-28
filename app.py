@@ -126,7 +126,7 @@ st.title("🏥 Agentic AI Healthcare Assistant")
 query = st.text_input("Enter your symptoms:")
 
 # -------------------------------
-# Chatbot + Memory (FIXED)
+# Chatbot + Memory
 # -------------------------------
 if query and query != st.session_state.last_query:
     st.session_state.last_query = query
@@ -145,7 +145,6 @@ if query and query != st.session_state.last_query:
 
     answer = agent_response(query, best)
 
-    # SAVE TO MEMORY
     st.session_state.chat_history.append(("user", query))
     st.session_state.chat_history.append(("bot", answer))
 
@@ -159,14 +158,6 @@ for role, msg in st.session_state.chat_history:
         st.markdown(f"🧑 **You:** {msg}")
     else:
         st.markdown(f"🤖 **AI:** {msg}")
-
-# -------------------------------
-# CLEAR CHAT (FULLY FIXED)
-# -------------------------------
-if st.button("🗑️ Clear Chat"):
-    st.session_state.chat_history.clear()
-    st.session_state.last_query = ""
-    st.rerun()
 
 # -------------------------------
 # Hospital Data

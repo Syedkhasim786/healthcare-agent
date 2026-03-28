@@ -10,6 +10,9 @@ from sentence_transformers import SentenceTransformer
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
+if "last_query" not in st.session_state:
+    st.session_state.last_query = ""
+
 # -------------------------------
 # Load model
 # -------------------------------
@@ -123,9 +126,11 @@ st.title("🏥 Agentic AI Healthcare Assistant")
 query = st.text_input("Enter your symptoms:")
 
 # -------------------------------
-# Chatbot + Memory
+# Chatbot + Memory (FIXED)
 # -------------------------------
-if query:
+if query and query != st.session_state.last_query:
+    st.session_state.last_query = query
+
     q_embed = model.encode([query])
     D, I = index.search(np.array(q_embed), k=5)
 
@@ -145,7 +150,7 @@ if query:
     st.session_state.chat_history.append(("bot", answer))
 
 # -------------------------------
-# 💬 DISPLAY CHAT HISTORY
+# DISPLAY CHAT HISTORY
 # -------------------------------
 st.subheader("💬 Chat History")
 
@@ -156,10 +161,11 @@ for role, msg in st.session_state.chat_history:
         st.markdown(f"🤖 **AI:** {msg}")
 
 # -------------------------------
-# ✅ FIXED CLEAR CHAT BUTTON
+# CLEAR CHAT (FULLY FIXED)
 # -------------------------------
 if st.button("🗑️ Clear Chat"):
     st.session_state.chat_history.clear()
+    st.session_state.last_query = ""
     st.rerun()
 
 # -------------------------------

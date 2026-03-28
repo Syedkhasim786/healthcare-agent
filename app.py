@@ -84,7 +84,7 @@ def filter_response(text, intent):
     return "No relevant information found."
 
 # -------------------------------
-# ✅ AGENTIC AI FUNCTION
+# ✅ FIXED AGENT FUNCTION
 # -------------------------------
 def agent_response(query, best_text):
     query_lower = query.lower()
@@ -93,27 +93,22 @@ def agent_response(query, best_text):
     advice = filter_response(best_text, "advice")
     definition = filter_response(best_text, "definition")
 
-    response = ""
-
     intent = detect_intent(query)
 
-    # -------------------------------
-    # Decision Making
-    # -------------------------------
+    # ✅ STRICT CONTROL
     if intent == "definition":
-        response += f"📘 About Disease:\n{definition}"
+        response = f"📘 About Disease:\n{definition}"
 
     elif intent == "advice":
-        response += f"💊 Advice:\n{advice}"
+        response = f"💊 Advice:\n{advice}"
+
+    elif intent == "symptoms":
+        response = f"🩺 Symptoms:\n{symptoms}"
 
     else:
-        # Default intelligent flow
-        response += f"🩺 Symptoms:\n{symptoms}\n\n"
-        response += f"💊 Advice:\n{advice}"
+        response = f"🩺 Symptoms:\n{symptoms}\n\n💊 Advice:\n{advice}"
 
-    # -------------------------------
-    # Severity Detection
-    # -------------------------------
+    # 🚨 Severity detection
     if any(word in query_lower for word in ["severe", "high", "emergency"]):
         response += "\n\n🚨 Condition seems serious. Please visit a hospital immediately."
 
@@ -142,7 +137,6 @@ if query:
             best = texts[i]
             break
 
-    # ✅ Agent response
     answer = agent_response(query, best)
 
     st.success(answer)

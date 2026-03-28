@@ -140,7 +140,7 @@ if query:
 
     answer = agent_response(query, best)
 
-    # ✅ SAVE TO MEMORY
+    # SAVE TO MEMORY
     st.session_state.chat_history.append(("user", query))
     st.session_state.chat_history.append(("bot", answer))
 
@@ -156,10 +156,11 @@ for role, msg in st.session_state.chat_history:
         st.markdown(f"🤖 **AI:** {msg}")
 
 # -------------------------------
-# Clear Chat Button
+# ✅ FIXED CLEAR CHAT BUTTON
 # -------------------------------
 if st.button("🗑️ Clear Chat"):
-    st.session_state.chat_history = []
+    st.session_state.chat_history.clear()
+    st.rerun()
 
 # -------------------------------
 # Hospital Data

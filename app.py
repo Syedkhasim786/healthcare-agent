@@ -55,14 +55,16 @@ def detect_intent(query):
     return "symptoms"
 
 # -------------------------------
-# Extract disease
+# Extract disease (STRICT MATCH)
 # -------------------------------
 def extract_disease(query):
     query = query.lower()
+
     for text in texts:
         disease_name = text.split(":")[0].strip().lower()
         if disease_name in query:
             return disease_name
+
     return None
 
 # -------------------------------
@@ -129,20 +131,17 @@ audio_file = st.audio_input("🎤 Speak your symptoms")
 
 if audio_file:
     st.audio(audio_file)
-    st.session_state.voice_text = "voice input received"
+    st.session_state.voice_text = ""
 
 # -------------------------------
-# ⌨️ Text Input (with voice hint)
+# ⌨️ Text Input
 # -------------------------------
-typed_query = st.text_input(
-    "Enter your symptoms:",
-    value=st.session_state.voice_text
-)
+typed_query = st.text_input("Enter your symptoms:")
 
 query = typed_query
 
 # -------------------------------
-# Chatbot
+# Chatbot (FIXED LOGIC)
 # -------------------------------
 if query and query != st.session_state.last_query:
     st.session_state.last_query = query
@@ -151,12 +150,19 @@ if query and query != st.session_state.last_query:
     D, I = index.search(np.array(q_embed), k=5)
 
     disease = extract_disease(query)
-    best = texts[I[0][0]]
 
-    for i in I[0]:
-        if disease and disease in texts[i].lower():
-            best = texts[i]
-            break
+    best = None
+
+    # ✅ STRICT MATCH FIRST
+    if disease:
+        for text in texts:
+            if text.lower().startswith(disease):
+                best = text
+                break
+
+    # ✅ FALLBACK TO FAISS
+    if not best:
+        best = texts[I[0][0]]
 
     answer = agent_response(query, best)
 

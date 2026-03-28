@@ -2,7 +2,6 @@ import streamlit as st
 import faiss
 import numpy as np
 import pandas as pd
-import speech_recognition as sr
 from sentence_transformers import SentenceTransformer
 
 # -------------------------------
@@ -13,24 +12,6 @@ if "chat_history" not in st.session_state:
 
 if "last_query" not in st.session_state:
     st.session_state.last_query = ""
-
-if "voice_query" not in st.session_state:
-    st.session_state.voice_query = ""
-
-# -------------------------------
-# 🎤 VOICE FUNCTION
-# -------------------------------
-def get_voice_input():
-    recognizer = sr.Recognizer()
-    try:
-        with sr.Microphone() as source:
-            st.info("🎤 Listening... Speak now")
-            audio = recognizer.listen(source)
-
-        text = recognizer.recognize_google(audio)
-        return text
-    except:
-        return ""
 
 # -------------------------------
 # Load model
@@ -143,34 +124,24 @@ def agent_response(query, best_text):
 st.title("🏥 Agentic AI Healthcare Assistant")
 
 # -------------------------------
-# 🎤 + ⌨ INPUT UI
+# 🎤 + ⌨ INPUT
 # -------------------------------
-col1, col2 = st.columns([4, 1])
+typed_query = st.text_input("Enter your symptoms:")
 
-with col1:
-    typed_query = st.text_input("Enter your symptoms:")
+audio_file = st.audio_input("🎤 Speak your symptoms")
 
-with col2:
-    if st.button("🎤"):
-        voice_text = get_voice_input()
-        st.session_state.voice_query = voice_text
-        st.session_state.last_query = ""
-
-# -------------------------------
-# FINAL QUERY DECISION
-# -------------------------------
 query = ""
 
-if st.session_state.voice_query:
-    query = st.session_state.voice_query
-    st.success(f"🎤 You said: {query}")
-    st.session_state.voice_query = ""
-
-elif typed_query:
+if typed_query:
     query = typed_query
 
+elif audio_file:
+    st.audio(audio_file)
+    st.warning("🎤 Voice recorded. (Speech-to-text not enabled yet)")
+    # future: convert audio → text using API
+
 # -------------------------------
-# Chatbot + Memory
+# Chatbot
 # -------------------------------
 if query and query != st.session_state.last_query:
     st.session_state.last_query = query
@@ -192,7 +163,7 @@ if query and query != st.session_state.last_query:
     st.session_state.chat_history.append(("bot", answer))
 
 # -------------------------------
-# DISPLAY CHAT HISTORY
+# DISPLAY CHAT
 # -------------------------------
 st.subheader("💬 Chat History")
 

@@ -9,7 +9,10 @@ import os
 # -------------------------------
 # 🔑 API KEY (use Streamlit secrets ideally)
 # -------------------------------
-client = OpenAI(api_key="your_api_key_here")
+import os
+from openai import OpenAI
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # -------------------------------
 # 🧠 MEMORY INIT

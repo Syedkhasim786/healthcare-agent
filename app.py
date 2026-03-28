@@ -5,13 +5,15 @@ import pandas as pd
 from sentence_transformers import SentenceTransformer
 
 # -------------------------------
+# PAGE CONFIG
+# -------------------------------
+st.set_page_config(page_title="Healthcare AI", layout="centered")
+
+# -------------------------------
 # 🧠 MEMORY INIT
 # -------------------------------
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-
-if "last_query" not in st.session_state:
-    st.session_state.last_query = ""
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
 # -------------------------------
 # Load model
@@ -27,7 +29,7 @@ with open("data/medical.txt", "r") as f:
 texts = text.split("\n\n")
 
 # -------------------------------
-# 🔥 CREATE DISEASE MAP (IMPORTANT FIX)
+# 🔥 CREATE DISEASE MAP
 # -------------------------------
 disease_map = {}
 for t in texts:
@@ -60,7 +62,7 @@ def detect_intent(query):
     return "symptoms"
 
 # -------------------------------
-# 🔥 PERFECT DISEASE MATCH
+# Extract disease
 # -------------------------------
 def extract_disease(query):
     query = query.lower()
@@ -73,8 +75,6 @@ def extract_disease(query):
 # Filter response
 # -------------------------------
 def filter_response(text, intent):
-    text_lower = text.lower()
-
     if intent == "definition":
         definition = text.split(":")[1]
         if "Symptoms:" in definition:
@@ -108,48 +108,55 @@ def agent_response(query, best_text):
         return f"🩺 Symptoms:\n{filter_response(best_text, 'symptoms')}"
 
 # -------------------------------
-# UI
+# UI TITLE
 # -------------------------------
-st.title("🏥 Agentic AI Healthcare Assistant")
-
-query = st.text_input("Enter your symptoms:")
+st.title("🏥 AI Healthcare Chat Assistant")
 
 # -------------------------------
-# 🔥 CHATBOT FIXED LOGIC
+# DISPLAY CHAT
 # -------------------------------
-if query and query != st.session_state.last_query:
-    st.session_state.last_query = query
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
+# -------------------------------
+# USER INPUT (ChatGPT style)
+# -------------------------------
+query = st.chat_input("Ask about symptoms, disease, advice...")
+
+# -------------------------------
+# CHAT LOGIC
+# -------------------------------
+if query:
+    # Show user message
+    st.session_state.messages.append({"role": "user", "content": query})
+    with st.chat_message("user"):
+        st.markdown(query)
+
+    # -------------------------------
+    # AI PROCESSING
+    # -------------------------------
     disease = extract_disease(query)
 
-    # ✅ PERFECT MATCH FIRST
     if disease:
         best = disease_map[disease]
     else:
-        # fallback
         q_embed = model.encode([query])
         D, I = index.search(np.array(q_embed), k=1)
         best = texts[I[0][0]]
 
     answer = agent_response(query, best)
 
-    st.session_state.chat_history.append(("user", query))
-    st.session_state.chat_history.append(("bot", answer))
-
-# -------------------------------
-# Chat history
-# -------------------------------
-st.subheader("💬 Chat History")
-
-for role, msg in st.session_state.chat_history:
-    if role == "user":
-        st.markdown(f"🧑 **You:** {msg}")
-    else:
-        st.markdown(f"🤖 **AI:** {msg}")
+    # Show AI message
+    st.session_state.messages.append({"role": "assistant", "content": answer})
+    with st.chat_message("assistant"):
+        st.markdown(answer)
 
 # -------------------------------
 # Hospitals
 # -------------------------------
+st.subheader("🏥 Nearby Hospitals")
+
 hospitals_data = {
     "vijayawada": [{"name": "Andhra Hospitals", "lat": 16.5062, "lon": 80.6480}],
     "hyderabad": [{"name": "Apollo Hospitals", "lat": 17.3850, "lon": 78.4867}],
@@ -157,8 +164,6 @@ hospitals_data = {
     "mumbai": [{"name": "Lilavati Hospital", "lat": 19.0596, "lon": 72.8295}],
     "delhi": [{"name": "AIIMS Delhi", "lat": 28.5672, "lon": 77.2100}],
 }
-
-st.subheader("🏥 Nearby Hospitals")
 
 city = st.selectbox("Select your city:", list(hospitals_data.keys()))
 

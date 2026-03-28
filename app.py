@@ -119,17 +119,45 @@ def agent_response(query, best_text):
     return response
 
 # -------------------------------
-# 🚨 SEVERITY CHECK
-# -------------------------------
-def is_severe(query):
-    return any(word in query.lower() for word in ["severe", "high", "emergency"])
-
-# -------------------------------
 # UI
 # -------------------------------
 st.title("🏥 Agentic AI Healthcare Assistant")
 
 query = st.text_input("Enter your symptoms:")
+
+# -------------------------------
+# Chatbot + Memory
+# -------------------------------
+if query and query != st.session_state.last_query:
+    st.session_state.last_query = query
+
+    q_embed = model.encode([query])
+    D, I = index.search(np.array(q_embed), k=5)
+
+    disease = extract_disease(query)
+
+    best = texts[I[0][0]]
+
+    for i in I[0]:
+        if disease and disease in texts[i].lower():
+            best = texts[i]
+            break
+
+    answer = agent_response(query, best)
+
+    st.session_state.chat_history.append(("user", query))
+    st.session_state.chat_history.append(("bot", answer))
+
+# -------------------------------
+# DISPLAY CHAT HISTORY
+# -------------------------------
+st.subheader("💬 Chat History")
+
+for role, msg in st.session_state.chat_history:
+    if role == "user":
+        st.markdown(f"🧑 **You:** {msg}")
+    else:
+        st.markdown(f"🤖 **AI:** {msg}")
 
 # -------------------------------
 # Hospital Data
@@ -158,54 +186,19 @@ hospitals_data = {
 }
 
 # -------------------------------
-# SELECT CITY (IMPORTANT)
+# Hospital Finder
 # -------------------------------
+st.subheader("🏥 Nearby Hospitals")
+
 city = st.selectbox("Select your city:", list(hospitals_data.keys()))
-st.session_state.selected_city = city
 
-# -------------------------------
-# Chatbot + Memory + AUTO ACTION
-# -------------------------------
-if query and query != st.session_state.last_query:
-    st.session_state.last_query = query
+if st.button("Search Hospitals"):
+    hospitals = hospitals_data[city]
 
-    q_embed = model.encode([query])
-    D, I = index.search(np.array(q_embed), k=5)
+    st.success(f"{len(hospitals)} hospital(s) found in {city.title()}")
 
-    disease = extract_disease(query)
-    best = texts[I[0][0]]
+    for h in hospitals:
+        st.write(f"🏥 {h['name']}")
 
-    for i in I[0]:
-        if disease and disease in texts[i].lower():
-            best = texts[i]
-            break
-
-    answer = agent_response(query, best)
-
-    st.session_state.chat_history.append(("user", query))
-    st.session_state.chat_history.append(("bot", answer))
-
-    # 🚨 AUTO HOSPITAL
-    if is_severe(query):
-        st.session_state.chat_history.append(
-            ("bot", "🏥 Showing nearby hospitals automatically:")
-        )
-
-        selected_city = st.session_state.selected_city
-
-        if selected_city in hospitals_data:
-            for h in hospitals_data[selected_city]:
-                st.session_state.chat_history.append(
-                    ("bot", f"🏥 {h['name']}")
-                )
-
-# -------------------------------
-# DISPLAY CHAT HISTORY
-# -------------------------------
-st.subheader("💬 Chat History")
-
-for role, msg in st.session_state.chat_history:
-    if role == "user":
-        st.markdown(f"🧑 **You:** {msg}")
-    else:
-        st.markdown(f"🤖 **AI:** {msg}")
+    df = pd.DataFrame(hospitals)
+    st.map(df)

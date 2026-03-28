@@ -42,27 +42,14 @@ def detect_intent(query):
     elif "what is" in query:
         return "definition"
     else:
-        return "symptoms"   # default
+        return "symptoms"
 
 # -------------------------------
-# ✅ IMPROVED: Auto disease detection
+# Extract disease
 # -------------------------------
 def extract_disease(query):
     query = query.lower()
 
-    # Step 1: check common diseases
-    common = [
-        "fever", "cold", "cough", "flu",
-        "diabetes", "asthma", "migraine",
-        "dengue", "malaria", "covid",
-        "typhoid", "allergy"
-    ]
-
-    for d in common:
-        if d in query:
-            return d
-
-    # Step 2: auto-detect from dataset
     for text in texts:
         disease_name = text.split(":")[0].strip().lower()
         if disease_name in query:
@@ -71,31 +58,35 @@ def extract_disease(query):
     return None
 
 # -------------------------------
-# ✅ IMPROVED: Filter response
+# ✅ FIXED: Extract real sections
 # -------------------------------
 def filter_response(text, intent):
-    sentences = text.split(".")
-    result = ""
+    text_lower = text.lower()
 
-    for s in sentences:
-        s_lower = s.lower()
+    # -------- Definition --------
+    if intent == "definition":
+        if ":" in text:
+            definition = text.split(":")[1]
+            if "Symptoms:" in definition:
+                definition = definition.split("Symptoms:")[0]
+            return definition.strip()
 
-        if intent == "advice" and any(w in s_lower for w in [
-            "rest", "drink", "take", "avoid", "consult"
-        ]):
-            result += s.strip() + ". "
+    # -------- Symptoms --------
+    elif intent == "symptoms":
+        if "symptoms:" in text_lower:
+            part = text.split("Symptoms:")[1]
 
-        elif intent == "symptoms" and any(w in s_lower for w in [
-            "symptom", "chills", "headache", "sweating", "muscle",
-            "fever", "fatigue", "nausea", "vomiting", "cough",
-            "sore throat", "weakness", "body pain"
-        ]):
-            result += s.strip() + ". "
+            if "Advice:" in part:
+                part = part.split("Advice:")[0]
 
-        elif intent == "definition" and ("is a" in s_lower or "is an" in s_lower):
-            result += s.strip() + ". "
+            return part.strip()
 
-    return result.strip() if result else "No relevant information found."
+    # -------- Advice --------
+    elif intent == "advice":
+        if "advice:" in text_lower:
+            return text.split("Advice:")[1].strip()
+
+    return "No relevant information found."
 
 # -------------------------------
 # UI
@@ -127,7 +118,7 @@ if query:
     st.info("👇 Find nearby hospitals below")
 
 # -------------------------------
-# 20 Cities Hospital Data
+# Hospital Data
 # -------------------------------
 hospitals_data = {
     "vijayawada": [{"name": "Andhra Hospitals", "lat": 16.5062, "lon": 80.6480}],

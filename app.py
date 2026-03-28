@@ -3,7 +3,6 @@ import faiss
 import numpy as np
 import pandas as pd
 from sentence_transformers import SentenceTransformer
-import os
 
 # -------------------------------
 # 🧠 MEMORY INIT
@@ -13,6 +12,9 @@ if "chat_history" not in st.session_state:
 
 if "last_query" not in st.session_state:
     st.session_state.last_query = ""
+
+if "voice_text" not in st.session_state:
+    st.session_state.voice_text = ""
 
 # -------------------------------
 # Load model
@@ -121,21 +123,23 @@ def agent_response(query, best_text):
 st.title("🏥 Agentic AI Healthcare Assistant")
 
 # -------------------------------
-# INPUT (Typing + Voice SAFE)
+# 🎤 Voice Input (UI only)
 # -------------------------------
-typed_query = st.text_input("Enter your symptoms:")
 audio_file = st.audio_input("🎤 Speak your symptoms")
 
-query = ""
-
-# Always allow typing
-if typed_query:
-    query = typed_query
-
-# Voice (safe mode)
-elif audio_file:
+if audio_file:
     st.audio(audio_file)
-    st.warning("🎤 Voice recorded (speech-to-text disabled to avoid API errors). Please type your query.")
+    st.session_state.voice_text = "voice input received"
+
+# -------------------------------
+# ⌨️ Text Input (with voice hint)
+# -------------------------------
+typed_query = st.text_input(
+    "Enter your symptoms:",
+    value=st.session_state.voice_text
+)
+
+query = typed_query
 
 # -------------------------------
 # Chatbot

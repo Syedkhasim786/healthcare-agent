@@ -13,9 +13,6 @@ if "chat_history" not in st.session_state:
 if "last_query" not in st.session_state:
     st.session_state.last_query = ""
 
-if "voice_text" not in st.session_state:
-    st.session_state.voice_text = ""
-
 # -------------------------------
 # Load model
 # -------------------------------
@@ -28,6 +25,14 @@ with open("data/medical.txt", "r") as f:
     text = f.read()
 
 texts = text.split("\n\n")
+
+# -------------------------------
+# 🔥 CREATE DISEASE MAP (IMPORTANT FIX)
+# -------------------------------
+disease_map = {}
+for t in texts:
+    name = t.split(":")[0].strip().lower()
+    disease_map[name] = t
 
 # -------------------------------
 # Create embeddings
@@ -55,16 +60,13 @@ def detect_intent(query):
     return "symptoms"
 
 # -------------------------------
-# Extract disease (STRICT MATCH)
+# 🔥 PERFECT DISEASE MATCH
 # -------------------------------
 def extract_disease(query):
     query = query.lower()
-
-    for text in texts:
-        disease_name = text.split(":")[0].strip().lower()
-        if disease_name in query:
-            return disease_name
-
+    for disease in disease_map.keys():
+        if disease in query:
+            return disease
     return None
 
 # -------------------------------
@@ -74,21 +76,20 @@ def filter_response(text, intent):
     text_lower = text.lower()
 
     if intent == "definition":
-        if ":" in text:
-            definition = text.split(":")[1]
-            if "Symptoms:" in definition:
-                definition = definition.split("Symptoms:")[0]
-            return definition.strip()
+        definition = text.split(":")[1]
+        if "Symptoms:" in definition:
+            definition = definition.split("Symptoms:")[0]
+        return definition.strip()
 
     elif intent == "symptoms":
-        if "symptoms:" in text_lower:
+        if "Symptoms:" in text:
             part = text.split("Symptoms:")[1]
             if "Advice:" in part:
                 part = part.split("Advice:")[0]
             return part.strip()
 
     elif intent == "advice":
-        if "advice:" in text_lower:
+        if "Advice:" in text:
             return text.split("Advice:")[1].strip()
 
     return "No relevant information found."
@@ -97,71 +98,37 @@ def filter_response(text, intent):
 # Agent response
 # -------------------------------
 def agent_response(query, best_text):
-    query_lower = query.lower()
-
-    symptoms = filter_response(best_text, "symptoms")
-    advice = filter_response(best_text, "advice")
-    definition = filter_response(best_text, "definition")
-
     intent = detect_intent(query)
 
     if intent == "definition":
-        response = f"📘 About Disease:\n{definition}"
+        return f"📘 About Disease:\n{filter_response(best_text, 'definition')}"
     elif intent == "advice":
-        response = f"💊 Advice:\n{advice}"
-    elif intent == "symptoms":
-        response = f"🩺 Symptoms:\n{symptoms}"
+        return f"💊 Advice:\n{filter_response(best_text, 'advice')}"
     else:
-        response = f"🩺 Symptoms:\n{symptoms}\n\n💊 Advice:\n{advice}"
-
-    if any(word in query_lower for word in ["severe", "high", "emergency"]):
-        response += "\n\n🚨 Condition seems serious. Please visit a hospital immediately."
-
-    return response
+        return f"🩺 Symptoms:\n{filter_response(best_text, 'symptoms')}"
 
 # -------------------------------
 # UI
 # -------------------------------
 st.title("🏥 Agentic AI Healthcare Assistant")
 
-# -------------------------------
-# 🎤 Voice Input (UI only)
-# -------------------------------
-audio_file = st.audio_input("🎤 Speak your symptoms")
-
-if audio_file:
-    st.audio(audio_file)
-    st.session_state.voice_text = ""
+query = st.text_input("Enter your symptoms:")
 
 # -------------------------------
-# ⌨️ Text Input
-# -------------------------------
-typed_query = st.text_input("Enter your symptoms:")
-
-query = typed_query
-
-# -------------------------------
-# Chatbot (FIXED LOGIC)
+# 🔥 CHATBOT FIXED LOGIC
 # -------------------------------
 if query and query != st.session_state.last_query:
     st.session_state.last_query = query
 
-    q_embed = model.encode([query])
-    D, I = index.search(np.array(q_embed), k=5)
-
     disease = extract_disease(query)
 
-    best = None
-
-    # ✅ STRICT MATCH FIRST
+    # ✅ PERFECT MATCH FIRST
     if disease:
-        for text in texts:
-            if text.lower().startswith(disease):
-                best = text
-                break
-
-    # ✅ FALLBACK TO FAISS
-    if not best:
+        best = disease_map[disease]
+    else:
+        # fallback
+        q_embed = model.encode([query])
+        D, I = index.search(np.array(q_embed), k=1)
         best = texts[I[0][0]]
 
     answer = agent_response(query, best)

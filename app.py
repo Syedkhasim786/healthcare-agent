@@ -2,6 +2,7 @@ import streamlit as st
 import faiss
 import numpy as np
 import pandas as pd
+import speech_recognition as sr
 from sentence_transformers import SentenceTransformer
 
 # -------------------------------
@@ -12,6 +13,24 @@ if "chat_history" not in st.session_state:
 
 if "last_query" not in st.session_state:
     st.session_state.last_query = ""
+
+if "voice_query" not in st.session_state:
+    st.session_state.voice_query = ""
+
+# -------------------------------
+# 🎤 VOICE FUNCTION
+# -------------------------------
+def get_voice_input():
+    recognizer = sr.Recognizer()
+    try:
+        with sr.Microphone() as source:
+            st.info("🎤 Listening... Speak now")
+            audio = recognizer.listen(source)
+
+        text = recognizer.recognize_google(audio)
+        return text
+    except:
+        return ""
 
 # -------------------------------
 # Load model
@@ -123,7 +142,32 @@ def agent_response(query, best_text):
 # -------------------------------
 st.title("🏥 Agentic AI Healthcare Assistant")
 
-query = st.text_input("Enter your symptoms:")
+# -------------------------------
+# 🎤 + ⌨ INPUT UI
+# -------------------------------
+col1, col2 = st.columns([4, 1])
+
+with col1:
+    typed_query = st.text_input("Enter your symptoms:")
+
+with col2:
+    if st.button("🎤"):
+        voice_text = get_voice_input()
+        st.session_state.voice_query = voice_text
+        st.session_state.last_query = ""
+
+# -------------------------------
+# FINAL QUERY DECISION
+# -------------------------------
+query = ""
+
+if st.session_state.voice_query:
+    query = st.session_state.voice_query
+    st.success(f"🎤 You said: {query}")
+    st.session_state.voice_query = ""
+
+elif typed_query:
+    query = typed_query
 
 # -------------------------------
 # Chatbot + Memory
@@ -135,7 +179,6 @@ if query and query != st.session_state.last_query:
     D, I = index.search(np.array(q_embed), k=5)
 
     disease = extract_disease(query)
-
     best = texts[I[0][0]]
 
     for i in I[0]:

@@ -30,7 +30,7 @@ index = faiss.IndexFlatL2(dimension)
 index.add(np.array(embeddings))
 
 # -------------------------------
-# ✅ FIXED: Detect intent
+# Detect intent
 # -------------------------------
 def detect_intent(query):
     query = query.lower()
@@ -42,23 +42,36 @@ def detect_intent(query):
     elif "what is" in query:
         return "definition"
     else:
-        # 🔥 DEFAULT → symptoms
-        return "symptoms"
+        return "symptoms"   # default
 
 # -------------------------------
-# Extract disease
+# ✅ IMPROVED: Auto disease detection
 # -------------------------------
 def extract_disease(query):
-    diseases = ["fever", "cold", "cough", "flu"]
     query = query.lower()
 
-    for d in diseases:
+    # Step 1: check common diseases
+    common = [
+        "fever", "cold", "cough", "flu",
+        "diabetes", "asthma", "migraine",
+        "dengue", "malaria", "covid",
+        "typhoid", "allergy"
+    ]
+
+    for d in common:
         if d in query:
             return d
+
+    # Step 2: auto-detect from dataset
+    for text in texts:
+        disease_name = text.split(":")[0].strip().lower()
+        if disease_name in query:
+            return disease_name
+
     return None
 
 # -------------------------------
-# ✅ FIXED: Filter response (clean)
+# ✅ IMPROVED: Filter response
 # -------------------------------
 def filter_response(text, intent):
     sentences = text.split(".")
@@ -67,10 +80,16 @@ def filter_response(text, intent):
     for s in sentences:
         s_lower = s.lower()
 
-        if intent == "advice" and any(w in s_lower for w in ["rest", "drink", "take"]):
+        if intent == "advice" and any(w in s_lower for w in [
+            "rest", "drink", "take", "avoid", "consult"
+        ]):
             result += s.strip() + ". "
 
-        elif intent == "symptoms" and any(w in s_lower for w in ["symptom", "chills", "headache", "sweating", "muscle"]):
+        elif intent == "symptoms" and any(w in s_lower for w in [
+            "symptom", "chills", "headache", "sweating", "muscle",
+            "fever", "fatigue", "nausea", "vomiting", "cough",
+            "sore throat", "weakness", "body pain"
+        ]):
             result += s.strip() + ". "
 
         elif intent == "definition" and ("is a" in s_lower or "is an" in s_lower):

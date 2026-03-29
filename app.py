@@ -4,7 +4,7 @@ import pandas as pd
 # -------------------------------
 # PAGE CONFIG
 # -------------------------------
-st.set_page_config(page_title="Agentic Healthcare AI", layout="centered")
+st.set_page_config(page_title="Healthcare AI", layout="centered")
 
 # -------------------------------
 # MEMORY
@@ -13,7 +13,7 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # -------------------------------
-# MEDICAL DATA
+# ✅ MEDICAL DATA (ACCURATE)
 # -------------------------------
 medical_data = {
     "fever": {
@@ -44,30 +44,7 @@ medical_data = {
 }
 
 # -------------------------------
-# HOSPITAL DATA
-# -------------------------------
-hospitals_data = {
-    "vijayawada": [
-        {"name": "Andhra Hospitals", "lat": 16.5062, "lon": 80.6480},
-        {"name": "Ramesh Hospitals", "lat": 16.5150, "lon": 80.6300}
-    ],
-    "hyderabad": [
-        {"name": "Apollo Hospitals", "lat": 17.3850, "lon": 78.4867},
-        {"name": "KIMS Hospital", "lat": 17.4350, "lon": 78.4483}
-    ],
-    "chennai": [
-        {"name": "Apollo Chennai", "lat": 13.0827, "lon": 80.2707}
-    ],
-    "mumbai": [
-        {"name": "Lilavati Hospital", "lat": 19.0596, "lon": 72.8295}
-    ],
-    "delhi": [
-        {"name": "AIIMS Delhi", "lat": 28.5672, "lon": 77.2100}
-    ]
-}
-
-# -------------------------------
-# INTENT
+# INTENT DETECTION
 # -------------------------------
 def detect_intent(query):
     q = query.lower()
@@ -88,84 +65,112 @@ def extract_disease(query):
     return None
 
 # -------------------------------
-# 🚨 SEVERITY
+# RESPONSE
 # -------------------------------
-def detect_severity(query):
-    q = query.lower()
-    keywords = ["severe", "high fever", "chest pain", "breath", "breathing", "shortness"]
-
-    return any(k in q for k in keywords)
-
-# -------------------------------
-# 🤖 AGENT LOGIC (CORE)
-# -------------------------------
-def agent_response(query, city):
+def generate_response(query):
     disease = extract_disease(query)
 
     if not disease:
-        return "❌ Please enter a valid disease (fever, malaria, migraine...)", None
+        return "❌ Please enter a valid disease (fever, malaria, migraine...)"
 
     intent = detect_intent(query)
     data = medical_data[disease]
 
-    # Step 1: Basic response
     if intent == "definition":
-        response = f"📘 {data['definition']}"
+        return f"📘 {data['definition']}"
     elif intent == "advice":
-        response = f"💊 {data['advice']}"
+        return f"💊 {data['advice']}"
     else:
-        response = f"🩺 {data['symptoms']}"
-
-    # Step 2: Severity decision
-    severe = detect_severity(query)
-
-    if severe:
-        response += "\n\n🚨 Severe condition detected!"
-        response += "\n👉 Taking action: Showing nearby hospitals..."
-
-        hospitals = hospitals_data.get(city, [])
-        return response, hospitals
-
-    return response, None
+        return f"🩺 {data['symptoms']}"
 
 # -------------------------------
-# UI
+# 🚨 FIXED SEVERITY DETECTION
 # -------------------------------
-st.title("🤖 Agentic AI Healthcare Assistant")
+def detect_severity(query):
+    q = query.lower()
 
-# Chat display
+    # Strong flexible matching
+    severe_keywords = [
+        "severe",
+        "high fever",
+        "chest pain",
+        "breathing",
+        "breath",
+        "shortness",
+        "unconscious",
+        "stroke",
+        "heart attack"
+    ]
+
+    for word in severe_keywords:
+        if word in q:
+            return True
+
+    return False
+
+# -------------------------------
+# UI TITLE
+# -------------------------------
+st.title("🏥 AI Healthcare Chat Assistant")
+
+# -------------------------------
+# CHAT UI
+# -------------------------------
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# City selection
-city = st.selectbox("Select your city:", list(hospitals_data.keys()))
+query = st.chat_input("Ask about symptoms, disease, advice...")
 
-# Input
-query = st.chat_input("Describe your symptoms or ask...")
-
-# -------------------------------
-# AGENT EXECUTION
-# -------------------------------
 if query:
     st.session_state.messages.append({"role": "user", "content": query})
     with st.chat_message("user"):
         st.markdown(query)
 
-    answer, hospitals = agent_response(query, city)
+    answer = generate_response(query)
+
+    # 🚨 ADD SEVERITY WARNING (FIXED)
+    if detect_severity(query):
+        answer += "\n\n🚨 Severe condition detected! Please visit a hospital immediately."
 
     st.session_state.messages.append({"role": "assistant", "content": answer})
     with st.chat_message("assistant"):
         st.markdown(answer)
 
-    # -------------------------------
-    # 🏥 AUTO ACTION (AGENT BEHAVIOR)
-    # -------------------------------
-    if hospitals:
-        st.subheader("🏥 Nearby Hospitals (Auto Suggested)")
+# -------------------------------
+# 🏥 HOSPITALS + MAP
+# -------------------------------
+st.subheader("🏥 Nearby Hospitals")
 
-        for h in hospitals:
-            st.write(f"🏥 {h['name']}")
+hospitals_data = {
+    "vijayawada": [
+        {"name": "Andhra Hospitals", "lat": 16.5062, "lon": 80.6480},
+        {"name": "Ramesh Hospitals", "lat": 16.5150, "lon": 80.6300}
+    ],
+    "hyderabad": [
+        {"name": "Apollo Hospitals", "lat": 17.3850, "lon": 78.4867},
+        {"name": "KIMS Hospital", "lat": 17.4350, "lon": 78.4483}
+    ],
+    "chennai": [
+        {"name": "Apollo Chennai", "lat": 13.0827, "lon": 80.2707}
+    ],
+    "mumbai": [
+        {"name": "Lilavati Hospital", "lat": 19.0596, "lon": 72.8295}
+    ],
+    "delhi": [
+        {"name": "AIIMS Delhi", "lat": 28.5672, "lon": 77.2100}
+    ]
+}
 
-        df = pd.DataFrame(hospitals)
-        st.map(df)
+city = st.selectbox("Select your city:", list(hospitals_data.keys()))
+
+if st.button("Show Hospitals"):
+    hospitals = hospitals_data[city]
+
+    st.success(f"{len(hospitals)} hospitals in {city.title()}")
+
+    for h in hospitals:
+        st.write(f"🏥 {h['name']}")
+
+    df = pd.DataFrame(hospitals)
+    st.map(df)

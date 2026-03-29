@@ -84,6 +84,31 @@ def generate_response(query):
         return f"🩺 {data['symptoms']}"
 
 # -------------------------------
+# 🚨 FIXED SEVERITY DETECTION
+# -------------------------------
+def detect_severity(query):
+    q = query.lower()
+
+    # Strong flexible matching
+    severe_keywords = [
+        "severe",
+        "high fever",
+        "chest pain",
+        "breathing",
+        "breath",
+        "shortness",
+        "unconscious",
+        "stroke",
+        "heart attack"
+    ]
+
+    for word in severe_keywords:
+        if word in q:
+            return True
+
+    return False
+
+# -------------------------------
 # UI TITLE
 # -------------------------------
 st.title("🏥 AI Healthcare Chat Assistant")
@@ -103,6 +128,10 @@ if query:
         st.markdown(query)
 
     answer = generate_response(query)
+
+    # 🚨 ADD SEVERITY WARNING (FIXED)
+    if detect_severity(query):
+        answer += "\n\n🚨 Severe condition detected! Please visit a hospital immediately."
 
     st.session_state.messages.append({"role": "assistant", "content": answer})
     with st.chat_message("assistant"):
